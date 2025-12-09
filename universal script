@@ -1,0 +1,330 @@
+-- ...existing code...
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+local Window = Rayfield:CreateWindow({
+   Name = "keemos universal hub❤️",
+   Icon = 0,
+   LoadingTitle = "Keemo universal hub❤️",
+   LoadingSubtitle = "by Keemo❤️",
+   ShowText = "Keemo universal hub❤️",
+   Theme = "Default",
+   ToggleUIKeybind = "K",
+   DisableRayfieldPrompts = false,
+   DisableBuildWarnings = false,
+   ConfigurationSaving = {
+      Enabled = true,
+      FolderName = nil,
+      FileName = "Big Hub"
+   },
+   Discord = {
+      Enabled = false,
+      Invite = "noinvitelink",
+      RememberJoins = true
+   },
+   KeySystem = false,
+   KeySettings = {
+      Title = "Untitled",
+      Subtitle = "Key System",
+      Note = "No method of obtaining the key is provided",
+      FileName = "Key",
+      SaveKey = true,
+      GrabKeyFromSite = false,
+      Key = {"Hello"}
+   }
+})
+
+Rayfield:Notify({
+   Title = "Welcome to keemos universal hub❤️",
+   Content = "Enjoy your stay And promote the server❤️",
+   Duration = 3.5,
+   Image = nil,
+})
+
+local MainTab = Window:CreateTab("Main⚒️", nil)
+
+-- Infinite jump (toggle)
+do
+    local infiniteJumpEnabled = false
+    local uis = game:GetService("UserInputService")
+    local conn
+    local btn = MainTab:CreateButton({
+        Name = "infinite jump (toggle)",
+        Callback = function()
+            infiniteJumpEnabled = not infiniteJumpEnabled
+            if infiniteJumpEnabled and not conn then
+                conn = game:GetService("UserInputService").JumpRequest:Connect(function()
+                    local plr = game.Players.LocalPlayer
+                    if plr and plr.Character then
+                        local humanoid = plr.Character:FindFirstChildOfClass('Humanoid')
+                        if humanoid then
+                            humanoid:ChangeState("Jumping")
+                        end
+                    end
+                end)
+            elseif not infiniteJumpEnabled and conn then
+                conn:Disconnect()
+                conn = nil
+            end
+        end,
+    })
+end
+
+-- Jump power slider
+MainTab:CreateSlider({
+   Name = "jump power",
+   Range = {0, 500},
+   Increment = 10,
+   Suffix = "power",
+   CurrentValue = 50,
+   Flag = "Slider1",
+   Callback = function(Value)
+         local plr = game.Players.LocalPlayer
+         if plr and plr.Character then
+             local humanoid = plr.Character:FindFirstChildOfClass("Humanoid")
+             if humanoid then
+                 humanoid.JumpPower = Value
+             end
+         end
+   end,
+})
+
+-- Speed boost slider
+MainTab:CreateSlider({
+   Name = "speed boost",
+   Range = {0, 500},
+   Increment = 10,
+   Suffix = "speed",
+   CurrentValue = 16,
+   Flag = "Slider2",
+   Callback = function(Value)
+         local plr = game.Players.LocalPlayer
+         if plr and plr.Character then
+             local humanoid = plr.Character:FindFirstChildOfClass("Humanoid")
+             if humanoid then
+                 humanoid.WalkSpeed = Value
+             end
+         end
+   end,
+})
+
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+
+-- Fly implementation (camera/mouse targeted) with proper cleanup and single input listener
+do
+    local player = game:GetService("Players").LocalPlayer
+    local flyState = {
+        enabled = false,
+        bv = nil,
+        renderConn = nil,
+        inputConn = nil,
+    }
+    local SPEED = 100
+
+    local function startFly()
+        if flyState.enabled then return end
+        local character = player.Character or player.CharacterAdded:Wait()
+        local hrp = character:WaitForChild("HumanoidRootPart", 5)
+        if not hrp then return end
+
+        flyState.bv = Instance.new("BodyVelocity")
+        flyState.bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+        flyState.bv.Velocity = Vector3.new(0, 0, 0)
+        flyState.bv.Parent = hrp
+
+        flyState.enabled = true
+        flyState.renderConn = RunService.RenderStepped:Connect(function()
+            if not flyState.enabled or not hrp.Parent then return end
+            local mouse = player:GetMouse()
+            local hit = mouse and mouse.Hit
+            if not hit then
+                flyState.bv.Velocity = Vector3.new(0,0,0)
+                return
+            end
+            local dir = hit.p - hrp.Position
+            if dir.Magnitude > 0.01 then
+                flyState.bv.Velocity = dir.Unit * SPEED
+            else
+                flyState.bv.Velocity = Vector3.new(0,0,0)
+            end
+        end)
+    end
+
+    local function stopFly()
+        flyState.enabled = false
+        if flyState.renderConn then
+            flyState.renderConn:Disconnect()
+            flyState.renderConn = nil
+        end
+        if flyState.bv then
+            flyState.bv:Destroy()
+            flyState.bv = nil
+        end
+    end
+
+    local function toggleFly()
+        if flyState.enabled then
+            stopFly()
+        else
+            startFly()
+        end
+    end
+
+    -- Button to initialize the input listener and toggling
+    MainTab:CreateButton({
+        Name = "fly (toggle with F)",
+        Callback = function()
+            -- ensure single input connection
+            if not flyState.inputConn then
+                flyState.inputConn = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+                    if gameProcessed then return end
+                    if input.KeyCode == Enum.KeyCode.F then
+                        toggleFly()
+                    end
+                end)
+
+                -- cleanup on respawn
+                player.CharacterAdded:Connect(function()
+                    stopFly()
+                end)
+            end
+            -- immediate toggle when pressing the button
+            toggleFly()
+        end,
+    })
+end
+
+-- Invisibility slider
+MainTab:CreateSlider({
+   Name = "invisibility",
+   Range = {0, 100},
+   Increment = 10,
+   Suffix = "percent",
+   CurrentValue = 0,
+   Flag = "Slider3",
+   Callback = function(Value)
+            local plr = game.Players.LocalPlayer
+            if plr and plr.Character then
+                for _, part in pairs(plr.Character:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.Transparency = Value / 100
+                    elseif part:IsA("Decal") then
+                        part.Transparency = Value / 100
+                    end
+                end
+            end
+   end,
+})
+
+local MiscTab = Window:CreateTab("Misc🎲", nil)
+local Section = MiscTab:CreateSection("Misc")
+
+MiscTab:CreateButton({
+   Name = "copy discord link",
+   Callback = function()
+        if setclipboard then
+            setclipboard("https://discord.gg/Xgva2xh5xN")
+        end
+   end,
+})
+
+MiscTab:CreateButton({
+   Name = "anti afk",
+   Callback = function()
+        local vu = game:GetService("VirtualUser")
+        game:GetService("Players").LocalPlayer.Idled:Connect(function()
+            vu:Button2Down(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
+            wait(1)
+            vu:Button2Up(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
+        end)
+   end,
+})
+
+MiscTab:CreateButton({
+   Name = "rejoin",
+   Callback = function()
+        local TeleportService = game:GetService("TeleportService")
+        local Players = game:GetService("Players")
+        local player = Players.LocalPlayer
+        TeleportService:Teleport(game.PlaceId, player)
+   end,
+})
+
+MiscTab:CreateButton({
+   Name = "Esp Players",
+   Callback = function()
+        local Players = game:GetService("Players")
+        local LocalPlayer = Players.LocalPlayer
+
+        for _, player in pairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer then
+                local highlight = Instance.new("Highlight")
+                highlight.Adornee = player.Character
+                highlight.FillColor = Color3.new(1, 0, 0)
+                highlight.OutlineColor = Color3.new(0, 0, 0)
+                highlight.Parent = workspace
+            end
+        end
+   end,
+})
+
+MainTab:CreateButton({
+    Name = "noclip (press N to toggle)",
+    Callback = function()
+        local player = game.Players.LocalPlayer
+        local noclipEnabled = false
+        local inputConn
+
+        local function toggleNoclip()
+            noclipEnabled = not noclipEnabled
+        end
+
+        if not inputConn then
+            inputConn = game:GetService("UserInputService").InputBegan:Connect(function(input, gameProcessed)
+                if gameProcessed then return end
+                if input.KeyCode == Enum.KeyCode.N then
+                    toggleNoclip()
+                end
+            end)
+        end
+
+        game:GetService("RunService").Stepped:Connect(function()
+            if noclipEnabled then
+                local character = player.Character
+                if character then
+                    for _, part in pairs(character:GetChildren()) do
+                        if part:IsA("BasePart") then
+                            part.CanCollide = false
+                        end
+                    end
+                end
+            end
+        end)
+    end,
+})
+
+local Tab = Window:CreateTab("Credits❤️", nil)
+Tab:CreateLabel("Keemo❤️ - Creator of the hub")
+Tab:CreateLabel("Rayfield❤️ - UI Library")
+Tab:CreateLabel("You❤️ - Using the hub")
+Tab:CreateLabel("Everyone❤️ - Supporting me")
+
+local Button = MiscTab:CreateButton({
+   Name = "expanded hitbox for players(shows on others)",
+   Callback = function()
+        local Players = game:GetService("Players")
+        local LocalPlayer = Players.LocalPlayer
+
+        for _, player in pairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer then
+                local character = player.Character
+                if character then
+                    local hrp = character:FindFirstChild("HumanoidRootPart")
+                    if hrp then
+                        hrp.Size = Vector3.new(10, 10, 10)
+                    end
+                end
+            end
+        end
+   end,
+})
